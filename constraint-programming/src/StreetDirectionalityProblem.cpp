@@ -2,7 +2,6 @@
 #include <gecode/int.hh>
 #include <gecode/minimodel.hh>
 #include <gecode/search.hh>
-#include <queue>
 
 using namespace std;
 using namespace Gecode;
@@ -128,7 +127,10 @@ public:
             }
         }
 
-        return ES_NOFIX;
+        for (int i = 0; i < removals.size(); ++i)
+            if (!removals[i].assigned()) return ES_FIX;
+
+        return home.ES_SUBSUMED(*this);
     }
 };
 
@@ -211,6 +213,10 @@ public:
         rel(*this, numberOfRemovals > value);
     }
 
+    int optimalValue() {
+        return numberOfRemovals.val();
+    }
+
     void debug() const {
         cout << numberOfCrossings << endl;
         for (int i = 0; i < numberOfCrossings; ++i) {
@@ -284,16 +290,14 @@ int main(int argc, char* argv[]) {
     BAB<StreetDirectionality> e(m);
     delete m;
     StreetDirectionality* best = NULL;
+
     while (StreetDirectionality* s = e.next()) {
-        if (s != NULL) {
-            delete best;
-            best = s;
-        }
-        else {
-            delete s;
-        }
+        delete best;
+        best = s;
     }
+
     if (best != NULL) {
         best->print();
+        delete best;
     }
 }
