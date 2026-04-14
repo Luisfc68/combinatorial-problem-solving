@@ -17,16 +17,20 @@ vector<vector<int>> floyd(vector<vector<int>> F) {
     int n = F.size();
     for (int x = 0; x < n; ++x) assert(F[x][x] == 0);
 
-    for (int k = 0; k < n; ++k)
-        for (int i = 0; i < n; ++i)
+    for (int k = 0; k < n; ++k) {
+        for (int i = 0; i < n; ++i) {
             for (int j = 0; j < n; ++j) {
-                if (F[i][k] != -1 and F[k][j] != -1) {
-                    if (F[i][j] != -1)
+                if (F[i][k] != -1 && F[k][j] != -1) {
+                    if (F[i][j] != -1) {
                         F[i][j] = min(F[i][j], F[i][k] + F[k][j]);
-                    else
+                    }
+                    else {
                         F[i][j] = F[i][k] + F[k][j];
+                    }
                 }
             }
+        }
+    }
 
     return F;
 };
@@ -36,7 +40,7 @@ private:
     const vector<vector<int>> distances;
     const vector<vector<int>> limits;
     vector<pair<int, int>> streets;
-    
+
 
 protected:
     ViewArray<Int::IntView> removals;
@@ -62,10 +66,10 @@ public:
     RespectLimitPropagator(
         Space& home,
         RespectLimitPropagator& propagator
-    ): Propagator(home, propagator),
-       distances(propagator.distances),
-       limits(propagator.limits),
-       streets(propagator.streets)
+    ) : Propagator(home, propagator),
+        distances(propagator.distances),
+        limits(propagator.limits),
+        streets(propagator.streets)
     {
         removals.update(home, propagator.removals);
     }
@@ -84,7 +88,7 @@ public:
 
     virtual size_t dispose(Space& home) override {
         removals.cancel(home, *this, Int::PC_INT_VAL);
-        (void) Propagator::dispose(home);
+        (void)Propagator::dispose(home);
         return sizeof(*this);
     }
 
@@ -176,7 +180,7 @@ public:
                 limitMatrix[i][j] = value == -1 ? value : value + (threshold * value) / 100;
             }
         }
-        twoWayRemovals = IntVarArray(*this, twoWayStreets.size(), IntSet{NONE, FORWARD, BACKWARD});
+        twoWayRemovals = IntVarArray(*this, twoWayStreets.size(), IntSet{ NONE, FORWARD, BACKWARD });
         numberOfRemovals = IntVar(*this, 0, twoWayStreets.size());
 
         respectLimit(*this, twoWayRemovals, costMatrix, limitMatrix);
@@ -229,7 +233,7 @@ public:
             cout << twoWayRemovals[i].val() << " ";
         }
         cout << endl;
-        
+
         cout << "numberOfRemovals" << endl;
         cout << numberOfRemovals.val() << endl;
     }
@@ -248,7 +252,8 @@ public:
             if (twoWayRemovals[i].val() == FORWARD) {
                 cout << twoWayStreets[i].second << " " << twoWayStreets[i].first << endl;
                 totalRemoved++;
-            } else if (twoWayRemovals[i].val() == BACKWARD) {
+            }
+            else if (twoWayRemovals[i].val() == BACKWARD) {
                 cout << twoWayStreets[i].first << " " << twoWayStreets[i].second << endl;
                 totalRemoved++;
             }
@@ -283,6 +288,7 @@ int main(int argc, char* argv[]) {
         if (s != NULL) {
             delete best;
             best = s;
+        }
         else {
             delete s;
         }
