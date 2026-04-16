@@ -268,33 +268,6 @@ public:
         return numberOfRemovals.val();
     }
 
-    void debug() const {
-        cout << numberOfCrossings << endl;
-        for (int i = 0; i < numberOfCrossings; ++i) {
-            for (int j = 0; j < numberOfCrossings; ++j)
-                cout << costMatrix[i][j] << " ";
-            cout << endl;
-        }
-        cout << threshold << endl;
-
-        cout << "limits:" << endl;
-        for (int i = 0; i < numberOfCrossings; ++i) {
-            for (int j = 0; j < numberOfCrossings; ++j)
-                cout << limitMatrix[i][j] << " ";
-            cout << endl;
-        }
-
-        cout << "variables:" << endl;
-        cout << "twoWayRemovals" << endl;
-        for (int i = 0; i < twoWayStreets.size(); ++i) {
-            cout << twoWayRemovals[i].val() << " ";
-        }
-        cout << endl;
-
-        cout << "numberOfRemovals" << endl;
-        cout << numberOfRemovals.val() << endl;
-    }
-
     void print() const {
         cout << numberOfCrossings << endl;
         for (int i = 0; i < numberOfCrossings; ++i) {
