@@ -40,13 +40,12 @@ private:
     const vector<vector<int>> limits;
     vector<pair<int, int>> streets;
 
-
 protected:
     ViewArray<Int::IntView> removals;
 
 public:
     RespectLimitPropagator(
-        Space& home,
+        Home home,
         ViewArray<Int::IntView> removals,
         const vector<vector<int>> distances,
         const vector<vector<int>> limits
@@ -74,11 +73,26 @@ public:
     }
 
     static ExecStatus post(
-        Space& home,
+        Home home,
         ViewArray<Int::IntView> removals,
         const vector<vector<int>>& distances,
         const vector<vector<int>>& limits
     ) {
+        int n = distances.size();
+        for (int i = 0; i < n; ++i)
+            if (distances[i][i] != 0) return ES_FAILED;
+
+        auto costs = floyd(distances);
+        bool breaksLimit, bidirectionalAsymmetric;
+        for (int i = 0; i < n; ++i) {
+            for (int j = 0; j < n; ++j) {
+                breaksLimit = costs[i][j] > limits[i][j];
+                bidirectionalAsymmetric = distances[i][j] > 0 && distances[j][i] > 0 && distances[i][j] != distances[j][i];
+                if (breaksLimit || bidirectionalAsymmetric) return ES_FAILED;
+            }
+        }
+
+
         // TODO mejorar segun el manual 316
         // revisar limits y costs (que la diagonal es 0 y que limite es mas grande)
         (void) new (home) RespectLimitPropagator(home, removals, distances, limits);
@@ -96,7 +110,7 @@ public:
     }
 
     virtual PropCost cost(const Space&, const ModEventDelta&) const override {
-        return PropCost::cubic(PropCost::HI, removals.size()); // TODO justificar HI
+        return PropCost::cubic(PropCost::HI, (unsigned int)distances.size()); // TODO justificar HI
     }
 
     virtual void reschedule(Space& home) override {
@@ -104,8 +118,7 @@ public:
     }
 
     virtual ExecStatus propagate(Space& home, const ModEventDelta&) override {
-        auto updatedDistances(distances);
-
+        vector<vector<int>> updatedDistances(distances);
         int first, second;
         for (int i = 0; i < streets.size(); ++i) {
             if (removals[i].assigned()) {
@@ -118,19 +131,58 @@ public:
 
         auto updatedCosts = floyd(updatedDistances);
 
-        int n = distances.size();
-        for (int i = 0; i < n; ++i) {
-            for (int j = 0; j < n; ++j) {
-                //cout << "i" << i << " j"<< j << " " << updatedCosts[i][j] << ">" << limits[i][j] << endl;
-                if (updatedCosts[i][j] > limits[i][j] || (updatedCosts[i][j] == -1 && limits[i][j] != -1))
-                    return ES_FAILED;
-            }
+        if (exceedsLimit(updatedCosts)) {
+            return ES_FAILED;
         }
+
+        GECODE_ES_CHECK(pruneCurrentSolution(home, updatedDistances));
 
         for (int i = 0; i < removals.size(); ++i)
             if (!removals[i].assigned()) return ES_FIX;
 
         return home.ES_SUBSUMED(*this);
+    }
+
+private:
+    ExecStatus pruneCurrentSolution(Home home, vector<vector<int>>& currentSolution) {
+        for (int i = 0; i < removals.size(); ++i) {
+            if (!removals[i].assigned()) {
+                GECODE_ES_CHECK(pruneStreet(home, currentSolution, i));
+            }
+        }
+        return ES_OK;
+    }
+
+    ExecStatus pruneStreet(Home home, vector<vector<int>> &currentSolution, int index) {
+        const vector<Direction> pruneOptions = {FORWARD, BACKWARD};
+        int first, second;
+        Direction option;
+        vector<vector<int>> solutionToCheck;
+        for (int o = 0; o < pruneOptions.size(); ++o) {
+            option = pruneOptions[o];
+            solutionToCheck = currentSolution;
+            first = streets[index].first;
+            second = streets[index].second;
+            if (option == FORWARD)  solutionToCheck[first][second] = -1;
+            if (option == BACKWARD) solutionToCheck[second][first] = -1;
+            auto costs = floyd(solutionToCheck);
+            if (exceedsLimit(costs)) {
+                GECODE_ME_CHECK(removals[index].nq(home, option));
+            }
+        }
+        return ES_OK;
+    }
+
+    bool exceedsLimit(vector<vector<int>>& costMatrix) {
+        int n = costMatrix.size();
+        for (int i = 0; i < n; ++i) {
+            for (int j = 0; j < n; ++j) {
+                // second part is that it became unrecheable
+                if (costMatrix[i][j] > limits[i][j] || (costMatrix[i][j] == -1 && limits[i][j] != -1))
+                    return true;
+            }
+        }
+        return false;
     }
 };
 
@@ -140,9 +192,8 @@ void respectLimit(
     const vector<vector<int>>& costs,
     const vector<vector<int>>& limits
 ) {
-    if (home.failed()) return;
+    GECODE_POST;
     ViewArray<Int::IntView> removalsView(home, removals);
-    PostInfo pi(home);
     GECODE_ES_FAIL(RespectLimitPropagator::post(home, removalsView, costs, limits));
 }
 
