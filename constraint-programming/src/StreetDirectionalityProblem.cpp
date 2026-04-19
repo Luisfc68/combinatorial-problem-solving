@@ -58,7 +58,7 @@ public:
                 }
             }
         }
-        removals.subscribe(home, *this, Int::PC_INT_VAL); // TODO documentar por que PC_INT_VAL
+        removals.subscribe(home, *this, Int::PC_INT_VAL);
     }
 
     RespectLimitPropagator(
@@ -92,9 +92,6 @@ public:
             }
         }
 
-
-        // TODO mejorar segun el manual 316
-        // revisar limits y costs (que la diagonal es 0 y que limite es mas grande)
         (void) new (home) RespectLimitPropagator(home, removals, distances, limits);
         return ES_OK;
     }
@@ -110,7 +107,7 @@ public:
     }
 
     virtual PropCost cost(const Space&, const ModEventDelta&) const override {
-        return PropCost::cubic(PropCost::HI, (unsigned int)distances.size()); // TODO justificar HI
+        return PropCost::cubic(PropCost::HI, (unsigned int)distances.size());
     }
 
     virtual void reschedule(Space& home) override {
@@ -135,29 +132,40 @@ public:
             return ES_FAILED;
         }
 
-        GECODE_ES_CHECK(pruneCurrentSolution(home, updatedDistances));
+        auto result = pruneCurrentSolution(home, updatedDistances);
+        if (result.first < ES_OK) {
+            return result.first;
+        }
 
         for (int i = 0; i < removals.size(); ++i)
-            if (!removals[i].assigned()) return ES_FIX;
+            if (!removals[i].assigned()) return result.second? ES_NOFIX : ES_FIX;
 
         return home.ES_SUBSUMED(*this);
     }
 
 private:
-    ExecStatus pruneCurrentSolution(Home home, vector<vector<int>>& currentSolution) {
+    pair<ExecStatus, bool> pruneCurrentSolution(Home home, vector<vector<int>>& currentSolution) {
+        bool modified = false;
         for (int i = 0; i < removals.size(); ++i) {
             if (!removals[i].assigned()) {
-                GECODE_ES_CHECK(pruneStreet(home, currentSolution, i));
+                auto result = pruneStreet(home, currentSolution, i);
+                if (result.first < ES_OK) {
+                    return result;
+                } else if (result.second) {
+                    modified = true;
+                }
             }
         }
-        return ES_OK;
+        return make_pair(ES_OK, modified);
     }
 
-    ExecStatus pruneStreet(Home home, vector<vector<int>> &currentSolution, int index) {
+    pair<ExecStatus, bool> pruneStreet(Home home, vector<vector<int>> &currentSolution, int index) {
         const vector<Direction> pruneOptions = {FORWARD, BACKWARD};
         int first, second;
         Direction option;
         vector<vector<int>> solutionToCheck;
+        ModEvent me;
+        bool modified = false;
         for (int o = 0; o < pruneOptions.size(); ++o) {
             option = pruneOptions[o];
             solutionToCheck = currentSolution;
@@ -167,10 +175,16 @@ private:
             if (option == BACKWARD) solutionToCheck[second][first] = -1;
             auto costs = floyd(solutionToCheck);
             if (exceedsLimit(costs)) {
-                GECODE_ME_CHECK(removals[index].nq(home, option));
+                me = removals[index].nq(home, option);
+                if (me_failed(me)) {
+                    return make_pair(ES_FAILED, modified);
+                }
+                if (me_modified(me)) {
+                    modified = true;
+                }
             }
         }
-        return ES_OK;
+        return make_pair(ES_OK, modified);
     }
 
     bool exceedsLimit(vector<vector<int>>& costMatrix) {
@@ -238,7 +252,7 @@ public:
 
         respectLimit(*this, twoWayRemovals, costMatrix, limitMatrix);
         count(*this, twoWayRemovals, IntSet{ FORWARD, BACKWARD }, IRT_EQ, numberOfRemovals);
-        // max para no empezar buscando por 0 que seria no hacer nada
+        // we use INT_VAL_MAX to avoid starting looking with 0 which would be leave the street as is
         branch(*this, twoWayRemovals, INT_VAR_NONE(), INT_VAL_MAX());
     }
 
@@ -262,10 +276,6 @@ public:
 
         int value = s.numberOfRemovals.val();
         rel(*this, numberOfRemovals > value);
-    }
-
-    int optimalValue() {
-        return numberOfRemovals.val();
     }
 
     void print() const {
