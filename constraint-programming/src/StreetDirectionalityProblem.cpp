@@ -137,40 +137,29 @@ public:
             return ES_FAILED;
         }
 
-        auto result = pruneCurrentSolution(home, updatedDistances);
-        if (result.first < ES_OK) {
-            return result.first;
-        }
+        GECODE_ES_CHECK(pruneCurrentSolution(home, updatedDistances));
 
         for (int i = 0; i < removals.size(); ++i)
-            if (!removals[i].assigned()) return result.second? ES_NOFIX : ES_FIX;
+            if (!removals[i].assigned()) return ES_FIX;
 
         return home.ES_SUBSUMED(*this);
     }
 
 private:
-    pair<ExecStatus, bool> pruneCurrentSolution(Home home, vector<vector<int>>& currentSolution) {
-        bool modified = false;
+    ExecStatus pruneCurrentSolution(Home home, vector<vector<int>>& currentSolution) {
         for (int i = 0; i < removals.size(); ++i) {
             if (!removals[i].assigned()) {
-                auto result = pruneStreet(home, currentSolution, i);
-                if (result.first < ES_OK) {
-                    return result;
-                } else if (result.second) {
-                    modified = true;
-                }
+                GECODE_ES_CHECK(pruneStreet(home, currentSolution, i));
             }
         }
-        return make_pair(ES_OK, modified);
+        return ES_OK;
     }
 
-    pair<ExecStatus, bool> pruneStreet(Home home, vector<vector<int>> &currentSolution, int index) {
+    ExecStatus pruneStreet(Home home, vector<vector<int>> &currentSolution, int index) {
         const vector<Direction> pruneOptions = {FORWARD, BACKWARD};
         int first, second;
         Direction option;
         vector<vector<int>> solutionToCheck;
-        ModEvent me;
-        bool modified = false;
         for (int o = 0; o < pruneOptions.size(); ++o) {
             option = pruneOptions[o];
             solutionToCheck = currentSolution;
@@ -180,16 +169,10 @@ private:
             if (option == BACKWARD) solutionToCheck[second][first] = -1;
             auto costs = floyd(solutionToCheck);
             if (exceedsLimit(costs)) {
-                me = removals[index].nq(home, option);
-                if (me_failed(me)) {
-                    return make_pair(ES_FAILED, modified);
-                }
-                if (me_modified(me)) {
-                    modified = true;
-                }
+                GECODE_ME_CHECK(removals[index].nq(home, option));
             }
         }
-        return make_pair(ES_OK, modified);
+        return ES_OK;
     }
 
     bool exceedsLimit(vector<vector<int>>& costMatrix) {
