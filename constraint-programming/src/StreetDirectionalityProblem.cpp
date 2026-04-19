@@ -36,8 +36,8 @@ vector<vector<int>> floyd(vector<vector<int>> F) {
 
 class RespectLimitPropagator : public Propagator {
 private:
-    const vector<vector<int>> distances;
-    const vector<vector<int>> limits;
+    vector<vector<int>> distances;
+    vector<vector<int>> limits;
     vector<pair<int, int>> streets;
 
 protected:
@@ -47,8 +47,8 @@ public:
     RespectLimitPropagator(
         Home home,
         ViewArray<Int::IntView> removals,
-        const vector<vector<int>> distances,
-        const vector<vector<int>> limits
+        vector<vector<int>> distances,
+        vector<vector<int>> limits
     ) : Propagator(home), distances(distances), limits(limits), removals(removals) {
         int n = distances.size();
         for (int i = 0; i < n; ++i) {
@@ -59,6 +59,7 @@ public:
             }
         }
         removals.subscribe(home, *this, Int::PC_INT_VAL);
+        home.notice(*this, AP_DISPOSE);
     }
 
     RespectLimitPropagator(
@@ -97,7 +98,11 @@ public:
     }
 
     virtual size_t dispose(Space& home) override {
+        home.ignore(*this, AP_DISPOSE);
         removals.cancel(home, *this, Int::PC_INT_VAL);
+        vector<vector<int>>().swap(limits);
+        vector<vector<int>>().swap(distances);
+        vector<pair<int,int>>().swap(streets);
         (void)Propagator::dispose(home);
         return sizeof(*this);
     }
