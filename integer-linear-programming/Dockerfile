@@ -6,6 +6,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
+    time \
     && rm -rf /var/lib/apt/lists/*
 
 COPY ${CPLEX_INSTALLER} /tmp/cplex_installer.bin
