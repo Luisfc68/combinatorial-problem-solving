@@ -1,4 +1,4 @@
-FROM eclipse-temurin:17-jdk AS builder
+FROM eclipse-temurin:17-jdk@sha256:b04a8c5d46e210873ffd1af6ad5f4d62c69ed3a6736993556eae60bba1373a23 AS builder
 
 ARG CPLEX_INSTALLER
 ENV CPLEX_DIR=/opt/ibm/ILOG/CPLEX_Studio201
