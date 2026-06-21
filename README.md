@@ -3,4 +3,4 @@
 This repository contains three differernt approaches to solve the Street Directionality Problem. These are:
 - [Constraint programming](./constraint-programming/)
 - [Integer linear programming](./integer-linear-programming/)
-- Propositional satisfiability
+- [Propositional satisfiability](./propositional-satisfiability/)
